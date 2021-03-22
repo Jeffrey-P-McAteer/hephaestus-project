@@ -1,0 +1,18 @@
+[package]
+name = "dod-pam-hwauth"
+version = "0.1.0"
+authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
+edition = "2018"
+
+[lib]
+name = "dod_pam_hwauth"
+crate-type = ["cdylib"]
+
+[dependencies]
+# LibC gives us the widths of all C data types
+libc = "0.2.90"
+# pcsc gives us smartcard library access across Windows, Linux, and MacOS
+pcsc = "2.4"
+
+
+
