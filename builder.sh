@@ -265,57 +265,59 @@ download_and_extract_package() {
 
 }
 
-stage1_packages=(
-  # Packages needed by pacman (see https://github.com/tokland/arch-bootstrap)
-  acl archlinux-keyring attr bzip2 curl expat glibc gpgme libarchive
-  libassuan libgpg-error libnghttp2 libssh2 lzo openssl pacman pacman-mirrorlist xz zlib
-  krb5 e2fsprogs keyutils libidn2 libunistring gcc-libs lz4 libpsl icu zstd
-  # Common unix tools
-  coreutils bash grep gawk file tar systemd sed
-  # stuff like /lib/
-  readline ncurses filesystem
-)
+{ # perform install stage 1: download packages and combine into a root filesystem
+  stage1_packages=(
+    # Packages needed by pacman (see https://github.com/tokland/arch-bootstrap)
+    acl archlinux-keyring attr bzip2 curl expat glibc gpgme libarchive
+    libassuan libgpg-error libnghttp2 libssh2 lzo openssl pacman pacman-mirrorlist xz zlib
+    krb5 e2fsprogs keyutils libidn2 libunistring gcc-libs lz4 libpsl icu zstd
+    # Common unix tools
+    coreutils bash grep gawk file tar systemd sed
+    # stuff like /lib/
+    readline ncurses filesystem
+  )
 
-for package in "${stage1_packages[@]}" ; do
-  download_and_extract_package "$root_fs" "$package"
-done
+  for package in "${stage1_packages[@]}" ; do
+    download_and_extract_package "$root_fs" "$package"
+  done
 
-# Copy in network config from the host
-sudo cp "/etc/resolv.conf" "$root_fs/etc/resolv.conf"
+  # Copy in network config from the host
+  sudo cp "/etc/resolv.conf" "$root_fs/etc/resolv.conf"
 
-# Configure the container pacman with the current mirror used to d/l packages from
-if [[ "$ARCH" == arm* || "$ARCH" == aarch64 ]]; then
-  echo "Server = $PACKAGE_SERVER/$ARCH/\$repo" | sudo tee "$root_fs/etc/pacman.d/mirrorlist"
-else
-  echo "Server = $PACKAGE_SERVER/\$repo/os/$ARCH" | sudo tee "$root_fs/etc/pacman.d/mirrorlist"
-fi
+  # Configure the container pacman with the current mirror used to d/l packages from
+  if [[ "$ARCH" == arm* || "$ARCH" == aarch64 ]]; then
+    echo "Server = $PACKAGE_SERVER/$ARCH/\$repo" | sudo tee "$root_fs/etc/pacman.d/mirrorlist"
+  else
+    echo "Server = $PACKAGE_SERVER/\$repo/os/$ARCH" | sudo tee "$root_fs/etc/pacman.d/mirrorlist"
+  fi
 
-sudo mkdir -p "$root_fs/dev"
-sudo sed -ie 's/^root:.*$/root:$1$GT9AUpJe$oXANVIjIzcnmOpY07iaGi\/:14657::::::/' "$root_fs/etc/shadow"
-sudo touch "$root_fs/etc/group"
-echo "$NEW_OS_HOSTNAME" | sudo tee "$root_fs/etc/hostname"
+  sudo mkdir -p "$root_fs/dev"
+  sudo sed -ie 's/^root:.*$/root:$1$GT9AUpJe$oXANVIjIzcnmOpY07iaGi\/:14657::::::/' "$root_fs/etc/shadow"
+  sudo touch "$root_fs/etc/group"
+  echo "$NEW_OS_HOSTNAME" | sudo tee "$root_fs/etc/hostname"
 
-sudo rm -f "$root_fs/etc/mtab"
-echo "rootfs / rootfs rw 0 0" | sudo tee "$root_fs/etc/mtab"
-test -e "$root_fs/dev/null" || sudo  mknod "$root_fs/dev/null" c 1 3
-test -e "$root_fs/dev/random" || sudo mknod -m 0644 "$root_fs/dev/random" c 1 8
-test -e "$root_fs/dev/urandom" || sudo mknod -m 0644 "$root_fs/dev/urandom" c 1 9
+  sudo rm -f "$root_fs/etc/mtab"
+  echo "rootfs / rootfs rw 0 0" | sudo tee "$root_fs/etc/mtab"
+  test -e "$root_fs/dev/null" || sudo  mknod "$root_fs/dev/null" c 1 3
+  test -e "$root_fs/dev/random" || sudo mknod -m 0644 "$root_fs/dev/random" c 1 8
+  test -e "$root_fs/dev/urandom" || sudo mknod -m 0644 "$root_fs/dev/urandom" c 1 9
 
-sudo  sed -i "s/^[[:space:]]*\(CheckSpace\)/# \1/" "$root_fs/etc/pacman.conf"
-sudo  sed -i "s/^[[:space:]]*SigLevel[[:space:]]*=.*$/SigLevel = Never/" "$root_fs/etc/pacman.conf"
+  sudo  sed -i "s/^[[:space:]]*\(CheckSpace\)/# \1/" "$root_fs/etc/pacman.conf"
+  sudo  sed -i "s/^[[:space:]]*SigLevel[[:space:]]*=.*$/SigLevel = Never/" "$root_fs/etc/pacman.conf"
+}
 
-# Begin stage 2, where we chroot/nspawn into the directory to run commands within the new OS.
+{ # Begin stage 2, where we chroot/nspawn into the directory to run commands within the new OS.
 
-stage2_packages=(
-  ${stage1_packages[*]}
-  coreutils bash grep gawk file tar systemd sed
-)
+  stage2_packages=(
+    ${stage1_packages[*]}
+    coreutils bash grep gawk file tar systemd sed
+  )
 
-echo "stage2_packages=${stage2_packages[*]}"
+  # Chroot into container and use pacman to install stage2 packages
+  sudo LC_ALL=C chroot "$root_fs" /usr/bin/pacman \
+      --noconfirm --arch $ARCH -Sy --overwrite \* $stage2_packages
 
-# Chroot into container and use pacman to install stage2 packages
-sudo LC_ALL=C chroot "$root_fs" /usr/bin/pacman \
-    --noconfirm --arch $ARCH -Sy --overwrite \* $stage2_packages
+}
 
 cat <<EOF
 Container built in $root_fs $(du -sh $root_fs 2>/dev/null | awk '{print $1}')
@@ -324,5 +326,6 @@ Try booting it using:
   sudo systemd-nspawn -D $root_fs /bin/bash
 
 EOF
+
 
 
