@@ -146,8 +146,9 @@ pub extern "C" fn pam_sm_authenticate(
       }
   };
 
-  // Send an APDU command.
-  let apdu = b"\x00\xa4\x04\x00\x0A\xA0\x00\x00\x00\x62\x03\x01\x0C\x06\x01";
+  // Send APDU command to ask for all card data
+  // aid=\xA0\x00\x00\x00\x04\x10\x10
+  let apdu = b"\x00\xA4\x04\x00\xA0\x00\x00\x00\x04\x10\x10\x00";
   println!("Sending APDU: {:?}", apdu);
   let mut rapdu_buf = [0; 2048];
   let rapdu = match card.transmit(apdu, &mut rapdu_buf) {
@@ -159,6 +160,9 @@ pub extern "C" fn pam_sm_authenticate(
   };
   println!("APDU response: {:?}", rapdu);
 
+
+  // Send APDU command to ask for public key
+  let apdu = b"\x00\xa4\x04\x00\x0A\xA0\x00\x00\x00\x62\x03\x01\x0C\x06\x01";
 
 
   return PAM_SUCCESS as c_int;
