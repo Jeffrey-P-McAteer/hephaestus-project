@@ -21,6 +21,8 @@ set -e
     tar xz zstd
     sudo chroot tee
     date
+    fdisk
+    sync umount mount swapon swapoff
   )
 
 
@@ -166,6 +168,15 @@ EOF
     mkdir -p "$TEMP_DIR"
   fi
 
+  # if a target disk is specified, the deployment type gets forced to "disk"
+  if ! [[ "$TARGET_DISK" == "/dev/null" ]] ; then
+    DEPLOYMENT_TYPE=disk
+    # Also if a target directory is not specified in disk mode, we use a random temporary disk.
+    if [[ "$TARGET_DIRECTORY" == "/dev/null" ]] ; then
+      TARGET_DIRECTORY="$TEMP_DIR/disk_fs_$((100 + $RANDOM % 1000))"
+    fi
+  fi
+
 }
 
 cat <<EOF
@@ -183,17 +194,64 @@ EOF
 
 root_fs=$(realpath "$TARGET_DIRECTORY")
 
-if [[ "$DEPLOYMENT_TYPE" == disk ]] ; then
-  # partition disk
-
-  # Mount partitions to $root_fs
-
-  echo '[ todo ] ^^^^^^^^'
-  exit 1
-fi
-
 if ! [[ -e "$root_fs" ]] ; then
   mkdir -p "$root_fs"
+fi
+
+if [[ "$DEPLOYMENT_TYPE" == disk ]] ; then
+
+  for _ in 1 2 3 ; do
+    echo "[ info ] Erasing data on $TARGET_DISK, press ctrl+c to exit"
+    sleep 1 # in case the operator wants to ctrl+c out
+  done
+
+  # Unmount/swapoff everything on the disk
+  sudo umount $TARGET_DISK* || true
+  sudo swapoff $TARGET_DISK* || true
+
+  sed -e 's/\s*\([\+0-9a-zA-Z]*\).*/\1/' << EOF | sudo fdisk "$TARGET_DISK"
+  g # replace the in memory partition table with an empty GPT table
+  n # new partition
+  1 # partition number 1
+    # default - start at beginning of disk 
+  +1G # 1 GB boot partition (used for /boot/)
+  n # new partition
+  2 # partition number 2
+    # default - start at beginning of disk 
+  +1G # 1 GB swap partition
+  t # set a partition's type
+  1 # select first partition
+  1 # GPT id for EFI type
+  t # set a partition's type
+  2 # select second partition
+  19 # GPT id for linux-swap (82 is for DOS disks)
+  n # new partition
+  3 # partion number 3
+    # default, start immediately after preceding partition
+    # default, extend partition to end of disk
+  p # print the in-memory partition table
+  w # write the partition table
+  q # and we're done
+EOF
+  
+  # Lookup partitions on $TARGET_DISK and store them.
+  # This relies on the output format of "fdisk -l {}" printing partitions in
+  # order at the end of its report.
+  TARGET_PARTITION_BOOT=$(fdisk -l "$TARGET_DISK" | tail -n 3 | head -n 1 | awk '{print $1}')
+  TARGET_PARTITION_SWAP=$(fdisk -l "$TARGET_DISK" | tail -n 2 | head -n 1 | awk '{print $1}')
+  TARGET_PARTITION_ROOT=$(fdisk -l "$TARGET_DISK" | tail -n 1 | head -n 1 | awk '{print $1}')
+
+
+  # Mount partitions to $root_fs
+  sudo mount "$TARGET_PARTITION_ROOT" "$root_fs"
+  sudo swapon "$TARGET_PARTITION_SWAP"
+  if ! [[ -e "$root_fs/boot" ]] ; then
+    sudo mkdir -p "$root_fs/boot"
+  fi
+  sudo mount "$TARGET_PARTITION_BOOT" "$root_fs/boot"
+
+  echo "[ info ] Partitions $TARGET_PARTITION_ROOT and $TARGET_PARTITION_BOOT mounted within $root_fs"
+
 fi
 
 # Utility functions
@@ -319,13 +377,41 @@ download_and_extract_package() {
 
 }
 
-cat <<EOF
-Container built in $root_fs $(du -sh $root_fs 2>/dev/null | awk '{print $1}')
+echo '[ info ] syncing disks...'
+sync
+echo '[ info ] Done!'
+
+# Print final report
+root_instal_size=$(du -sh $root_fs 2>/dev/null | awk '{print $1}')
+if [[ "$DEPLOYMENT_TYPE" == disk ]] ; then
+  sudo umount "$TARGET_PARTITION_BOOT"
+  sudo umount "$TARGET_PARTITION_ROOT"
+  sudo swapoff "$TARGET_PARTITION_SWAP"
+  sync
+  cat <<EOF
+Disk built in $root_fs $root_instal_size
+
+Try booting it as a container using:
+  sudo mount $TARGET_PARTITION_ROOT $root_fs
+  sudo mount $TARGET_PARTITION_BOOT $root_fs/boot
+  sudo systemd-nspawn -D $root_fs /bin/bash
+
+Alternatively, boot the entire drive as a VM:
+  sudo qemu-system-x86_64 -m 8G --bios /usr/share/edk2-ovmf/x64/OVMF_CODE.fd -drive file=$TARGET_DISK,format=raw,if=virtio -nic user,id=dodnet0,net=192.168.90.0/24,dhcpstart=192.168.90.10 -display gtk -vga virtio
+
+( A copy of OVMF.fd may be obtained at https://sourceforge.net/projects/edk2/files/OVMF/OVMF-X64-r15214.zip/download,
+  as well as the package libvirt via "sudo pacman -S libvirt" which installs it to the location /usr/share/edk2-ovmf/x64/OVMF_CODE.fd )
+
+EOF
+else
+  cat <<EOF
+Container built in $root_fs $root_instal_size
 
 Try booting it using:
   sudo systemd-nspawn -D $root_fs /bin/bash
 
 EOF
+fi
 
 
 
