@@ -433,7 +433,7 @@ Try booting it as a container using:
   sudo mount $TARGET_PARTITION_BOOT $root_fs/boot
   sudo systemd-nspawn -D $root_fs /bin/bash
 
-Alternatively, boot the entire drive as a VM:
+Alternatively, boot the entire drive as a VM: (ctrl+alt+g to ungrab mouse)
   sudo qemu-system-x86_64 -m 8G --bios /usr/share/edk2-ovmf/x64/OVMF_CODE.fd -drive file=$TARGET_DISK,format=raw,if=virtio -nic user,id=dodnet0,net=192.168.90.0/24,dhcpstart=192.168.90.10 -display gtk -vga virtio
 
 ( A copy of OVMF.fd may be obtained at https://sourceforge.net/projects/edk2/files/OVMF/OVMF-X64-r15214.zip/download,
