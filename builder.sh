@@ -23,6 +23,7 @@ set -e
     date
     fdisk
     sync umount mount swapon swapoff
+    genfstab
   )
 
 
@@ -241,6 +242,11 @@ EOF
   TARGET_PARTITION_SWAP=$(fdisk -l "$TARGET_DISK" | tail -n 2 | head -n 1 | awk '{print $1}')
   TARGET_PARTITION_ROOT=$(fdisk -l "$TARGET_DISK" | tail -n 1 | head -n 1 | awk '{print $1}')
 
+  # Create filesystems
+  sudo mkfs.fat -F32 "$TARGET_PARTITION_BOOT"
+  sudo mkswap "$TARGET_PARTITION_SWAP"
+  #sudo mkfs.btrfs --label "$NEW_OS_HOSTNAME" --force "$TARGET_PARTITION_ROOT"
+  sudo mkfs.ext4 -t ext4 -L "$NEW_OS_HOSTNAME" -F "$TARGET_PARTITION_ROOT"
 
   # Mount partitions to $root_fs
   sudo mount "$TARGET_PARTITION_ROOT" "$root_fs"
@@ -249,6 +255,12 @@ EOF
     sudo mkdir -p "$root_fs/boot"
   fi
   sudo mount "$TARGET_PARTITION_BOOT" "$root_fs/boot"
+
+  # Create /etc/fstab for the mounted filesystems
+  if ! [[ -e "$root_fs/etc" ]] ; then
+    sudo mkdir -p "$root_fs/etc"
+  fi
+  genfstab -U -p "$root_fs" | grep -i -A2 "$TARGET_DISK" | sudo tee "$root_fs/etc/fstab"
 
   echo "[ info ] Partitions $TARGET_PARTITION_ROOT and $TARGET_PARTITION_BOOT mounted within $root_fs"
 
@@ -369,11 +381,36 @@ download_and_extract_package() {
   stage2_packages=(
     ${stage1_packages[*]}
     coreutils bash grep gawk file tar systemd sed
+    base linux-hardened linux-firmware efivar sudo
+    git rsync coreutils binutils diffutils
+    file ripgrep vim
+    # Misc filesystem tools
+    exfatprogs ntfs-3g xfsprogs btrfs-progs
+    inetutils
+    mkinitcpio
   )
 
+  chroot_cmd() {
+    sudo LC_ALL=C chroot "$root_fs" "$@"
+  }
+
+  nspawn_cmd() {
+    sudo systemd-nspawn -D "$root_fs" "$@"
+  }
+
   # Chroot into container and use pacman to install stage2 packages
-  sudo LC_ALL=C chroot "$root_fs" /usr/bin/pacman \
-      --noconfirm --arch $ARCH -Sy --overwrite \* $stage2_packages
+  echo "Installing ${stage2_packages[*]}"
+  nspawn_cmd /usr/bin/pacman --noconfirm --arch $ARCH -Sy --overwrite \* ${stage2_packages[*]}
+  sync
+
+  # install bootloader
+  if [[ "$DEPLOYMENT_TYPE" == disk ]] ; then
+    echo "[ info ] installing systemd-boot to $root_fs/boot/"
+    nspawn_cmd /usr/bin/mkinitcpio -p linux-hardened
+    nspawn_cmd /usr/bin/bootctl install
+    # Write boot config file
+    echo '[ TODO ] Write boot config file'
+  fi
 
 }
 
