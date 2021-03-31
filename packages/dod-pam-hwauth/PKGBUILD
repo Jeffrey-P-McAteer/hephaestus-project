@@ -1,0 +1,43 @@
+# Maintainer: Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>
+pkgname=dod-pam-hwauth
+pkgver=$(grep 'version.*=' Cargo.toml | grep -E -o "([0-9]{1,}\.)+[0-9]{1,}")
+pkgrel=1
+pkgdesc="Hardware PAM module which authenticates to the owner account."
+arch=('x86_64')
+url="https://todo.mil"
+license=('GPL2')
+groups=()
+depends=()
+#makedepends=('rust' 'cargo')
+makedepends=('jq')
+optdepends=()
+provides=($pkgname)
+conflicts=()
+replaces=()
+backup=()
+options=()
+install=
+changelog=
+source=()
+noextract=()
+# generate with 'makepkg -g'
+sha256sums=()
+
+# See https://wiki.archlinux.org/index.php/Rust_package_guidelines
+
+build() {
+  # TODO d/l tarball from official server
+  cargo build --release --locked --all-features --target-dir=target
+}
+
+check() {
+  cargo test --release --locked --target-dir=target
+}
+
+
+package() {
+  # -rwxr-xr-x
+  install -Dm 755 target/release/libdod_pam_hwauth.so "${pkgdir}/usr/lib/security/dod_pam_hwauth.so"
+}
+
+
