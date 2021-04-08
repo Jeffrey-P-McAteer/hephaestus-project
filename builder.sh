@@ -222,7 +222,7 @@ if [[ "$DEPLOYMENT_TYPE" == disk ]] ; then
   +1G # 1 GB swap partition
   t # set a partition's type
   1 # select first partition
-  1 # GPT id for EFI type
+  1 # GPT id for EFI type (or "uefi")
   t # set a partition's type
   2 # select second partition
   19 # GPT id for linux-swap (82 is for DOS disks)
