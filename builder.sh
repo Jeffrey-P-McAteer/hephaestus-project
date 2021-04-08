@@ -436,6 +436,9 @@ Try booting it as a container using:
 Alternatively, boot the entire drive as a VM: (ctrl+alt+g to ungrab mouse)
   sudo qemu-system-x86_64 -m 8G --bios /usr/share/edk2-ovmf/x64/OVMF_CODE.fd -drive file=$TARGET_DISK,format=raw,if=virtio -nic user,id=dodnet0,net=192.168.90.0/24,dhcpstart=192.168.90.10 -display gtk -vga virtio
 
+Or for a terminal-only serial UI (Ctrl-A, X to exit VM; Ctrl-A, C for VM monitor)
+  sudo qemu-system-x86_64 -m 8G --bios /usr/share/edk2-ovmf/x64/OVMF_CODE.fd -drive file=$TARGET_DISK,format=raw,if=virtio -nic user,id=dodnet0,net=192.168.90.0/24,dhcpstart=192.168.90.10 -nographic -serial mon:stdio
+
 ( A copy of OVMF.fd may be obtained at https://sourceforge.net/projects/edk2/files/OVMF/OVMF-X64-r15214.zip/download,
   as well as the package libvirt via "sudo pacman -S libvirt" which installs it to the location /usr/share/edk2-ovmf/x64/OVMF_CODE.fd )
 
