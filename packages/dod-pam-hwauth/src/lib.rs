@@ -5,8 +5,9 @@ use libc::{
   c_int, c_uint, c_char, c_void
 };
 use pcsc::{
-  Context, Scope, ShareMode, Protocols, Error
+  Context, Scope, ShareMode, Protocols, Error, Card
 };
+
 
 // Constants copied from: https://pubs.opengroup.org/onlinepubs/8329799/apdxa.htm
 
@@ -87,6 +88,18 @@ pub extern "C" fn pam_sm_acct_mgmt(
   return PAM_USER_UNKNOWN as c_int;
 }
 
+fn send_apdu(apdu: &[u8], card: &Card) -> Result<Vec<u8>, ()> {
+  let mut rapdu_buf = [0; 2048];
+  let rapdu = match card.transmit(apdu, &mut rapdu_buf) {
+      Ok(rapdu) => rapdu,
+      Err(err) => {
+          eprintln!("Failed to transmit APDU command to card: {}", err);
+          return Err(());
+      }
+  };
+
+  return Ok(rapdu.to_vec());
+}
 
 // https://linux.die.net/man/3/pam_sm_authenticate
 #[no_mangle]
@@ -123,47 +136,45 @@ pub extern "C" fn pam_sm_authenticate(
       }
   };
 
-  // Use the first reader.
-  let reader = match readers.next() {
-      Some(reader) => reader,
-      None => {
-          println!("No readers are connected.");
-          return PAM_AUTHINFO_UNAVAIL as i32;
-      }
-  };
-  println!("Using reader: {:?}", reader);
+  // for each reader...
+  loop {
+    let reader = match readers.next() {
+        Some(reader) => reader,
+        None => {
+            println!("No more readers are connected.");
+            return PAM_AUTHINFO_UNAVAIL as i32;
+        }
+    };
+    println!("Using reader: {:?}", reader);
 
-  // Connect to the card.
-  let card = match ctx.connect(reader, ShareMode::Shared, Protocols::ANY) {
-      Ok(card) => card,
-      Err(Error::NoSmartcard) => {
-          println!("A smartcard is not present in the reader.");
-          return PAM_AUTHINFO_UNAVAIL as i32;
-      }
-      Err(err) => {
-          eprintln!("Failed to connect to card: {}", err);
-          return PAM_AUTHINFO_UNAVAIL as i32;
-      }
-  };
+    // Connect to the card.
+    let mut card = match ctx.connect(reader, ShareMode::Shared, Protocols::ANY) {
+        Ok(card) => card,
+        Err(Error::NoSmartcard) => {
+            println!("A smartcard is not present in the reader.");
+            return PAM_AUTHINFO_UNAVAIL as i32;
+        }
+        Err(err) => {
+            eprintln!("Failed to connect to card: {}", err);
+            return PAM_AUTHINFO_UNAVAIL as i32;
+        }
+    };
 
-  // Send APDU command to ask for all card data
-  // aid=\xA0\x00\x00\x00\x04\x10\x10
-  let apdu = b"\x00\xA4\x04\x00\xA0\x00\x00\x00\x04\x10\x10\x00";
-  println!("Sending APDU: {:?}", apdu);
-  let mut rapdu_buf = [0; 2048];
-  let rapdu = match card.transmit(apdu, &mut rapdu_buf) {
-      Ok(rapdu) => rapdu,
-      Err(err) => {
-          eprintln!("Failed to transmit APDU command to card: {}", err);
-          return PAM_AUTHINFO_UNAVAIL as i32;
-      }
-  };
-  println!("APDU response: {:?}", rapdu);
+    // response of 6A, 86 means "Incorrect parameters P1-P2"
+
+    // Select master file; a4 == select, 
+    // let rapdu = send_apdu(b"\x00\xa4\x00\x00", &card).unwrap();
+    // println!("APDU response: {:02X?} (expected )", rapdu);
+    // // opens a logical channel numbered in CLA (byte 1, last 2 bits)
+
+    // let rapdu = send_apdu(b"\x00\xB0\x00\x00\x20", &card).unwrap();
+    // println!("APDU response: {:02X?}", rapdu);
+
+    let rapdu = send_apdu(b"\x00\x20\x21\x00\x20", &card).unwrap();
+    println!("APDU response: {:02X?}", rapdu);
 
 
-  // Send APDU command to ask for public key
-  let apdu = b"\x00\xa4\x04\x00\x0A\xA0\x00\x00\x00\x62\x03\x01\x0C\x06\x01";
-
+  }
 
   return PAM_SUCCESS as c_int;
 }

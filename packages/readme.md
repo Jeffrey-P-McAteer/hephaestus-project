@@ -1,7 +1,7 @@
 
-# DoD Packages
+# Hephaestus Packages
 
-This directory contains new software which separates DoD OS from
+This directory contains new software which separates Hephaestus OS from
 general-purpose operating systems, specifically:
 
  - `dod-pam-hwauth`
@@ -17,7 +17,7 @@ general-purpose operating systems, specifically:
      - Just like `dod-pam-hwauth`, this encryption relies on hardware tokens to decrypt data. No passwords are used.
 
  - `dod-kde-theme`
-     - This package provides a KDE theme for DoD machines to use. It should have the same decorum as the rest of DoD emblems, logos, and seals in use by the DoD and supporting agencies.
+     - This package provides a KDE theme for Hephaestus machines to use. It should have the same decorum as the rest of DoD emblems, logos, and seals in use by the DoD and supporting agencies.
 
  - `dod-wireguard`
      - A port of wireguard which only uses hardware tokens for authorization. A management program will also be provided, such
@@ -54,7 +54,7 @@ general-purpose operating systems, specifically:
 
  - A package to provide code CI/CD and track project status would be great, but there are many providers and some research is in order.
 
- - A python script to setup 5-6 DoD-OS VMs (\~2gb memory each, ephemeral drives?) and simulate common network use cases. This will become
+ - A python script to setup 5-6 hephaestus-OS VMs (\~2gb memory each, ephemeral drives?) and simulate common network use cases. This will become
    a continuous test for the entire project, where a VM failing to respond or responding incorrectly will prevent the OS from being deployed.
 
 

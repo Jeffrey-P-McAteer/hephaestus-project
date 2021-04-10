@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This bash script performs all of the tasks
-# required to build DOD-OS in all planned configurations.
+# required to build hephaestus-os in all planned configurations.
 # The most common configuration will be deploying the OS
 # to a removable storage device for regular use.
 
@@ -43,9 +43,9 @@ set -e
   TARGET_DIRECTORY=/dev/null
   TARGET_DISK=/dev/null
   DEPLOYMENT_TYPE=container # Possible values are "container" or "disk"
-  TEMP_DIR=/tmp/dod-os-builder
+  TEMP_DIR=/tmp/hephaestus-os-builder
   DO_VERIFICATION=false
-  NEW_OS_HOSTNAME=dod-os-$(date +'%Y-%m-%d')
+  NEW_OS_HOSTNAME=hephaestus-os-$(date +'%Y-%m-%d')
 
   HELP_TEXT=$(cat <<EOF
 Usage: $0 [options]
