@@ -24,6 +24,26 @@ cargo build --release
 # Builds dod-pam-hwauth/target/release/libdod_pam_hwauth.so
 ```
 
+# Testing
+
+Dependencies:
+
+```bash
+cargo install cargo-tarpaulin
+```
+
+Testing:
+
+```bash
+cargo test
+# and
+cargo tarpaulin
+```
+
+The rule for all dod packages is: 100% code coverage, 100% test pass. If code ought not be tested/covered,
+write ignore rules for it and comment why somewhere near the ignore rule.
+(For this project see https://github.com/xd009642/tarpaulin#ignoring-code-in-files ).
+
 
 # Usage
 

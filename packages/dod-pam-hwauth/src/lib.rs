@@ -8,6 +8,9 @@ use pcsc::{
   Context, Scope, ShareMode, Protocols, Error, Card
 };
 
+#[cfg(test)]
+mod tests;
+
 
 // Constants copied from: https://pubs.opengroup.org/onlinepubs/8329799/apdxa.htm
 
@@ -71,7 +74,7 @@ pub extern "C" fn pam_sm_setcred(
   _argc: c_int,
   _argv: *const *const c_char
 ) -> c_int {
-
+  
   return PAM_USER_UNKNOWN as c_int;
 }
 
@@ -137,12 +140,17 @@ pub extern "C" fn pam_sm_authenticate(
   };
 
   // for each reader...
+  let mut max_readers = 10;
   loop {
+    max_readers -= 1;
+    if max_readers < 1 {
+      break;
+    }
     let reader = match readers.next() {
         Some(reader) => reader,
         None => {
             println!("No more readers are connected.");
-            return PAM_AUTHINFO_UNAVAIL as i32;
+            return PAM_AUTHINFO_UNAVAIL as c_int;
         }
     };
     println!("Using reader: {:?}", reader);
@@ -152,11 +160,11 @@ pub extern "C" fn pam_sm_authenticate(
         Ok(card) => card,
         Err(Error::NoSmartcard) => {
             println!("A smartcard is not present in the reader.");
-            return PAM_AUTHINFO_UNAVAIL as i32;
+            return PAM_AUTHINFO_UNAVAIL as c_int;
         }
         Err(err) => {
             eprintln!("Failed to connect to card: {}", err);
-            return PAM_AUTHINFO_UNAVAIL as i32;
+            return PAM_AUTHINFO_UNAVAIL as c_int;
         }
     };
 
@@ -173,7 +181,15 @@ pub extern "C" fn pam_sm_authenticate(
     let rapdu = send_apdu(b"\x00\x20\x21\x00\x20", &card).unwrap();
     println!("APDU response: {:02X?}", rapdu);
 
+    if rapdu.len() > 0 {
+      return PAM_AUTHINFO_UNAVAIL as c_int;
+    }
 
+
+  }
+
+  if max_readers < 1 {
+    return PAM_AUTHINFO_UNAVAIL as c_int;
   }
 
   return PAM_SUCCESS as c_int;

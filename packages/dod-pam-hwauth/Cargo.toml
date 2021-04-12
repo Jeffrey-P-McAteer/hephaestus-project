@@ -16,3 +16,6 @@ pcsc = "2.4"
 
 
 
+cargo-tarpaulin = "0.16.0"
+
+
