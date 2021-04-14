@@ -28,6 +28,14 @@ fn test_auth_withbad_data() {
     ));
     assert_eq!(r, PAM_USER_UNKNOWN as c_int);
 
+    let r = pam_sm_acct_mgmt(
+      std::mem::transmute(0 as u8),
+      std::mem::transmute(0),
+      std::mem::transmute(0),
+      std::mem::transmute(std::ptr::null::<u8>()
+    ));
+    assert_eq!(r, PAM_USER_UNKNOWN as c_int);
+
     let r = pam_sm_authenticate(
       std::mem::transmute(0 as u8),
       std::mem::transmute(0),
