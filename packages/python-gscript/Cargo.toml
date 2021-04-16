@@ -1,0 +1,19 @@
+[package]
+name = "python-gscript"
+version = "0.1.0"
+authors = ["Jeffrey McAteer <jeffrey.p.mcateer@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+python-parser = "0.2"
+web-view = { version = "0.7" }
+
+
+[dependencies.pyo3]
+version = "0.13.2"
+features = ["auto-initialize"]
+
+
