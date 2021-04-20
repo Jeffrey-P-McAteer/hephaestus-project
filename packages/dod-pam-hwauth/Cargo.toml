@@ -15,3 +15,11 @@ libc = "0.2.90"
 pcsc = "2.4"
 
 talktosc = "0.1"
+
+
+
+[profile.test]
+opt-level = 1
+codegen-units = 1
+debug-asserts = false
+

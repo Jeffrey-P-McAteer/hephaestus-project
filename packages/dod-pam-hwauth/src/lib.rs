@@ -5,7 +5,7 @@ use libc::{
   c_int, c_uint, c_char, c_void
 };
 use pcsc::{
-  Context, Scope, ShareMode, Protocols, Error, Card
+  Context, Scope, ShareMode, Protocols, Error, Card, Disposition
 };
 
 #[cfg(test)]
@@ -184,8 +184,7 @@ pub extern "C" fn pam_sm_authenticate(
     let rapdu = send_apdu(b"\x00\xCA\x00\x6E", &card).unwrap();
     println!("APDU response: {:02X?}", rapdu); // 6a 82 - file not found
 
-
-    if rapdu.len() > 0 {
+    if rapdu.len() > 5 {
       return PAM_AUTHINFO_UNAVAIL as c_int;
     }
 

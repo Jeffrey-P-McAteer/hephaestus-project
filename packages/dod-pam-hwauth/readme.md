@@ -29,15 +29,17 @@ cargo build --release
 Dependencies:
 
 ```bash
-cargo install cargo-tarpaulin
+rustup component add llvm-tools-preview # will eventually be renamed to simply "llvm-tools"
+cargo install grcov
 ```
 
 Testing:
 
 ```bash
+# unit tests
 cargo test
-# and
-cargo tarpaulin
+# integration + coverage tests
+python -m test
 ```
 
 The rule for all dod packages is: 100% code coverage, 100% test pass. If code ought not be tested/covered,
