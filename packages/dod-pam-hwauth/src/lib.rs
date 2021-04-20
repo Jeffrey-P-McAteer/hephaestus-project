@@ -156,7 +156,7 @@ pub extern "C" fn pam_sm_authenticate(
     println!("Using reader: {:?}", reader);
 
     // Connect to the card.
-    let mut card = match ctx.connect(reader, ShareMode::Shared, Protocols::ANY) {
+    let card = match ctx.connect(reader, ShareMode::Shared, Protocols::ANY) {
         Ok(card) => card,
         Err(Error::NoSmartcard) => {
             println!("A smartcard is not present in the reader.");
