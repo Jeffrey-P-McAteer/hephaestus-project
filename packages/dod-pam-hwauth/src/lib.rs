@@ -178,8 +178,12 @@ pub extern "C" fn pam_sm_authenticate(
     // let rapdu = send_apdu(b"\x00\xB0\x00\x00\x20", &card).unwrap();
     // println!("APDU response: {:02X?}", rapdu);
 
-    let rapdu = send_apdu(b"\x00\x20\x21\x00\x20", &card).unwrap();
-    println!("APDU response: {:02X?}", rapdu);
+    // https://cardwerk.com/iso-7816-part-4/
+    // See https://cardwerk.com/smart-card-standard-iso7816-4-section-6-basic-interindustry-commands/
+    //let rapdu = send_apdu(b"\xA0\xA4\x00\x00\x02\x7F\x10", &card).unwrap();
+    let rapdu = send_apdu(b"\x00\xCA\x00\x6E", &card).unwrap();
+    println!("APDU response: {:02X?}", rapdu); // 6a 82 - file not found
+
 
     if rapdu.len() > 0 {
       return PAM_AUTHINFO_UNAVAIL as c_int;
