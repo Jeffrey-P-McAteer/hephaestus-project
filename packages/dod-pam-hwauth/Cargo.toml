@@ -15,8 +15,3 @@ libc = "0.2.90"
 pcsc = "2.4"
 
 talktosc = "0.1"
-
-
-cargo-tarpaulin = "0.16.0"
-
-
